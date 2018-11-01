@@ -3,6 +3,12 @@
 global_defs {
   vrrp_version 3
   vrrp_iptables {{ .iptablesChain }}
+  notification_email {
+      {{ .email1 }}
+      {{ .email2 }}
+  }
+  notification_email_from {{ .email3 }}
+  lvs_id {{ .lvsid }} 
 }
 
 vrrp_instance vips {
@@ -29,14 +35,16 @@ vrrp_instance vips {
   }
 }
 
-# TCP
+# Persistent connect
 {{ range $i, $vs := .vss }}
 virtual_server fwmark {{ $acceptMark }} {
   delay_loop 5
   lb_algo {{ $vs.Scheduler }}
-  lb_kind DR
+  lb_kind {{ .method }}
   persistence_timeout 360
-  protocol TCP
+  persistence_granularity {{ .IP }}
+  nat_mask {{ $netmask }}
+  protocol {{ .protocol }}
 
   {{ range $j, $ip := $vs.RealServer }}
   real_server {{ $ip }} 0 {
@@ -50,14 +58,15 @@ virtual_server fwmark {{ $acceptMark }} {
 }
 {{ end }}
 
-# UDP
+# IP PORT connect
 {{ range $i, $vs := .vss }}
-virtual_server fwmark {{ $acceptMark }} {
+virtual_server {{ .IP }} {{ .PORT }} {
   delay_loop 5
   lb_algo {{ $vs.Scheduler }}
-  lb_kind DR
+  lb_kind {{ .method }}
   persistence_timeout 360
-  protocol UDP
+  persistence_granularity {{ .IP }}
+  protocol {{ .protocol }}
 
   {{ range $j, $ip := $vs.RealServer }}
   real_server {{ $ip }} 0 {
